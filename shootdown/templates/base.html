@@ -1,0 +1,50 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="{% if lang == 'hk' %}zh-HK{% else %}en{% endif %}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Recommended title pattern -->
+    <title>shoot-down.site - Django</title>
+    <meta name="description" content="shoot-down.site - Django">
+    <meta name="robots" content="index, follow">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{% static 'css/all.css' %}">           <!-- Font Awesome -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.css' %}">     <!-- Bootstrap -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">         <!-- Custom -->
+
+    <!-- External libraries in head (good practice for render-blocking resources) -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>                <!-- Updated from v5 (2025 current is v7+) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/spin.js/2.3.2/spin.min.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body id="main-body" style="background-color: #071b2b;">
+
+    <!-- Navigation -->
+    {% include 'partials/_navbar.html' %}
+
+    <!-- Optional global style overrides -->
+    {% include 'partials/_style.html' %}
+
+    <main role="main">
+        <!-- Page content -->
+        {% block content %}{% endblock %}
+    </main>
+
+
+    <!-- JavaScript - placed at end for better page load performance -->
+    <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+
+    <!-- You might want to add project-wide scripts here -->
+    <script src="{% static 'js/main.js' %}"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

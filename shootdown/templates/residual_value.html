@@ -1,0 +1,469 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid" style="text-align: center;height: 5px;">
+</div>
+
+<div class="container-fluid" style="text-align: center;  height: 190px ;background-color:#071b2b;">
+  <span class="filter">
+    <div class="container-fluid rounded" id="filterc" style="width:742.5px; text-align: left; padding:15px 15px;background-color:#252735;" >
+      <h4 style="color:white; margin: 0px">End of Day HSI CBBC Residual Value Distribution </h4>
+      <h6 style="color:white;margin:3px 0px">(Unit︰HKD) </h6>
+
+      <span style="display: inline-block;margin: 10px 2px 0px 0px;" >
+        <div class="container-fluid rounded" style="width:145px; padding:5px 10px; background-color:#143643;">
+          <p style="color:white; padding: 0px 0px 0px 8px; margin:0px;">Date </p>
+          <div class="form-group" style="width:120px; margin:0px;">
+            <select class="form-control" id="date_list" style="font-size: 10pt">
+                <option selected value=20260112>2026-01-14</option>
+                <option value=20260113>2026-01-13</option>
+                <option value=20260114>2026-01-12</option>
+            </select>
+          </div>
+        </div>
+      </span>
+
+      <span style="display: inline-block;transform: translateY(-20%);margin: 0px 5px;" >
+        <button type="button" style="height:64px; margin: 0px" class="btn btn-info" id="run" >
+          Run
+        </button>
+      </span>
+    </div>
+  </span> 
+</div>
+
+<div class="container-fluid" style="text-align: center;height: 20px;">
+  <span class="rspace" style="text-align: left;">
+    <p id="updatetime" style="color:white;font-size:80%;padding: 1px 0px 0px 8px;" >
+    Last Updated Time: 
+    </p>
+    <svg class="table_area3" id ="table_area3" ></svg>
+  </span> 
+</div>
+
+<div class="container-fluid" style="text-align: center;background-color:#071b2b;margin: 0px">
+  <span class="b">
+    <div class="container-fluid rounded" style="text-align: center;background-color:#252734;margin: 0px; padding: 10px">
+      <svg class="table_area" id ="table_area" ></svg>
+    </div>
+  </span> 
+</div>
+
+
+<script>
+    // ────────────────────────────────────────────────
+    // Update date option
+    // ────────────────────────────────────────────────
+    const dateDataJson = "{{ date_data_json|escapejs }}";
+    const dateData = JSON.parse(dateDataJson);
+    const select = document.getElementById('date_list');
+
+    // Clear any existing options
+    select.innerHTML = '';
+
+    // Update date option
+    dateData.date_label.forEach((label, index) => {
+        const value = dateData.date_value[index];          
+        const valueStr = value.toString();             
+        select.add(new Option(label, valueStr));  
+    });
+
+    // Select the first option by default
+    if (select.options.length > 0) {
+        select.selectedIndex = 0;
+    }
+</script>
+
+
+<script type = "application/javascript">
+    // ────────────────────────────────────────────────
+    // Constants & Configuration
+    // ────────────────────────────────────────────────
+    const CONFIG = {
+        BLOCK_HEIGHT: 25,
+        BLOCK_WIDTH: 105,
+        BAR_HEIGHT: 20,
+        HEADER_HEIGHT: 50,
+        SCREEN_WIDTH: 720,
+        MIDDLE_BLOCK_HEIGHT: 30,
+        BAR_AREA_WIDTH: 260,
+        MAX_BAR_WIDTH: 200,
+    };
+
+    BLOCK_X =  CONFIG.BAR_AREA_WIDTH/2 + 100 + CONFIG.BLOCK_WIDTH;
+
+    const COLORS = {
+        BACKGROUND: '#343643',
+        BULL: '#2259c3',
+        BEAR: 'SandyBrown',
+        HEADER: '#343643',
+        MIDDLE: '#143643',
+        TEXT: 'white',
+        ZERO: 'Silver',
+    };
+
+
+    // ────────────────────────────────────────────────
+    // DOM & SVG Elements
+    // ────────────────────────────────────────────────
+    const svg = d3.select("#table_area");
+    const $runBtn = document.getElementById("run");
+
+    let currentMaxValue = 73000000; // will be updated from API
+
+
+    // ────────────────────────────────────────────────
+    // Utility Functions
+    // ────────────────────────────────────────────────
+    function formatNumber(n) {
+        const num = parseInt(n, 10);
+        if (Math.abs(num) >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+        if (Math.abs(num) >= 1_000)     return (num / 1_000).toFixed(1) + 'K';
+        return num.toLocaleString();
+    }
+
+    function getBarWidth(value) {
+        return Math.abs(value) / currentMaxValue * CONFIG.MAX_BAR_WIDTH;
+    }
+
+
+    // ────────────────────────────────────────────────
+    // Initial Setup – Create structure once
+    // ────────────────────────────────────────────────
+    function initChart() {
+        // Header background
+        svg.append("rect")
+        .attr("width", CONFIG.SCREEN_WIDTH - 5)
+        .attr("height", CONFIG.HEADER_HEIGHT)
+        .attr("x", 1)
+        .attr("y", 0)
+        .attr("fill", COLORS.HEADER);
+
+        // Header texts
+        const headers = [
+        { x: CONFIG.BLOCK_WIDTH / 2,           text: "Index Range" },
+        { x: (BLOCK_X - CONFIG.BLOCK_WIDTH) / 2 + CONFIG.BLOCK_WIDTH, text: "Negative Residual Value" },
+        { x: (BLOCK_X - CONFIG.BLOCK_WIDTH) / 2 + BLOCK_X, text: "Positive Residual Value" },
+        { x: CONFIG.BAR_AREA_WIDTH + CONFIG.BLOCK_WIDTH + 270, text: "Residual Value (HKD)" },
+        ];
+
+        headers.forEach(h => {
+        svg.append("text")
+            .attr("x", h.x)
+            .attr("y", CONFIG.HEADER_HEIGHT / 2)
+            .attr("text-anchor", "middle")
+            .attr("alignment-baseline", "middle")
+            .style("fill", COLORS.TEXT)
+            .style("font-size", "13px")
+            .text(h.text);
+        });
+
+        // Create 15 rows for Bull & Bear
+        for (let i = 0; i < 15; i++) {
+        createRow(i, "Bull", CONFIG.HEADER_HEIGHT + CONFIG.MIDDLE_BLOCK_HEIGHT - 25, 1);
+        createRow(i, "Bear", CONFIG.HEADER_HEIGHT, 1);
+        }
+
+        // Middle separator & HSI close line
+        svg.append("rect")
+        .attr("width", CONFIG.SCREEN_WIDTH - 5)
+        .attr("height", CONFIG.MIDDLE_BLOCK_HEIGHT)
+        .attr("x", 1)
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT)
+        .attr("fill", COLORS.MIDDLE);
+
+        svg.append("line")
+        .style("stroke", "lightgrey")
+        .style("stroke-width", 2)
+        .style("stroke-dasharray", "4,4")
+        .attr("x1", BLOCK_X + 1)
+        .attr("y1", CONFIG.HEADER_HEIGHT)
+        .attr("x2", BLOCK_X + 1)
+        .attr("y2", 835);
+
+        // HSI Close
+        svg.append("text")
+        .attr("id","hsiclose")
+        .attr("x", CONFIG.BLOCK_WIDTH / 2 - 10 )
+        .attr("y",15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + 15)
+        .attr("text-anchor","middle")
+        .attr("alignment-baseline","middle")
+        .style("font-size","13px")
+        .attr("fill","white")
+
+        // ────────────────────────────────────────────────
+        // Bull side - no listed bull area → gray
+        svg.append("rect")
+        .attr("id", "bull_max_rect")
+        .attr("x", CONFIG.BLOCK_WIDTH + 2)
+        .attr("width", CONFIG.SCREEN_WIDTH - 110)
+        .attr("height", 0) // will be updated
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + CONFIG.MIDDLE_BLOCK_HEIGHT)
+        .attr("fill", "LightSlateGray")
+        .attr("opacity", 0.9);
+
+        // Bull side - no listed bull text
+        svg.append("text")
+        .attr("id", "bull_max_text")
+        .attr("x", CONFIG.BLOCK_WIDTH + (CONFIG.SCREEN_WIDTH - CONFIG.BLOCK_WIDTH - 110) / 2)
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + CONFIG.MIDDLE_BLOCK_HEIGHT + CONFIG.BLOCK_HEIGHT + 1.5) 
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .style("font-size", "13px")
+        .style("fill", "WhiteSmoke")
+        .text("");
+
+        // Bull side - shot area → darker gray
+        svg.append("rect")
+        .attr("id", "bull_call_rect")
+        .attr("x", CONFIG.BLOCK_WIDTH + 1.5)
+        .attr("width", CONFIG.SCREEN_WIDTH - 110)
+        .attr("height", 0) // will be updated
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + CONFIG.MIDDLE_BLOCK_HEIGHT)
+        .attr("fill", "Grey")
+        .attr("opacity", 0.8);
+
+        // Bull side shot area text
+        svg.append("text")
+        .attr("id", "bull_call_text")
+        .attr("x", CONFIG.BLOCK_WIDTH + (CONFIG.SCREEN_WIDTH - CONFIG.BLOCK_WIDTH - 110) / 2)
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + CONFIG.MIDDLE_BLOCK_HEIGHT + CONFIG.BLOCK_HEIGHT + 1.5) 
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .style("font-size", "13px")
+        .style("fill", "WhiteSmoke")
+        .text("");
+
+        // ────────────────────────────────────────────────
+        // Bear side - no listed bear area → gray
+        svg.append("rect")
+        .attr("id", "bear_min_rect")
+        .attr("x", CONFIG.BLOCK_WIDTH + 2)
+        .attr("width", CONFIG.SCREEN_WIDTH - 110)
+        .attr("height", 0) // will be updated
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT - 0)
+        .attr("fill", "LightSlateGray")
+        .attr("opacity", 0.9);
+
+        // Bear side - no listed bear text 
+        svg.append("text")
+        .attr("id", "bear_min_text")
+        .attr("x", CONFIG.BLOCK_WIDTH + (CONFIG.SCREEN_WIDTH - CONFIG.BLOCK_WIDTH - 110) / 2)
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + CONFIG.BLOCK_HEIGHT + 1.5) 
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .style("font-size", "13px")
+        .style("fill", "WhiteSmoke")
+        .text("");
+
+        // Bear side - shot area → darker gray
+        svg.append("rect")
+        .attr("id", "bear_call_rect")
+        .attr("x", CONFIG.BLOCK_WIDTH + 1)
+        .attr("width", CONFIG.SCREEN_WIDTH - 110)
+        .attr("height", 0) // will be updated
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT - 0)
+        .attr("fill", "Grey")
+        .attr("opacity", 0.8);
+
+        // Bear side - shot area text
+        svg.append("text")
+        .attr("id", "bear_call_text")
+        .attr("x", CONFIG.BLOCK_WIDTH + (CONFIG.SCREEN_WIDTH - CONFIG.BLOCK_WIDTH - 110) / 2)
+        .attr("y", 15 * CONFIG.BLOCK_HEIGHT + CONFIG.HEADER_HEIGHT + CONFIG.BLOCK_HEIGHT + 1.5) 
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .style("font-size", "13px")
+        .style("fill", "WhiteSmoke")
+        .text("");
+    }
+
+
+    function createRow(index, type, yOffsetBase, pattern) {
+        const isBull = type === "Bull";
+        const rowY = isBull
+        ? (30 - index) * CONFIG.BLOCK_HEIGHT + yOffsetBase
+        : (14 - index) * CONFIG.BLOCK_HEIGHT + yOffsetBase;
+
+        const bgColor = index % 2 === pattern ? COLORS.BACKGROUND : "none";
+
+        // Background
+        svg.append("rect")
+        .attr("x", 1)
+        .attr("width", CONFIG.SCREEN_WIDTH - 5)
+        .attr("height", CONFIG.BLOCK_HEIGHT)
+        .attr("y", rowY)
+        .attr("fill", bgColor);
+
+        // Range label
+        svg.append("text")
+        .attr("id", `${type}Range${index}`)
+        .attr("x", CONFIG.BLOCK_WIDTH / 2)
+        .attr("y", rowY + CONFIG.BLOCK_HEIGHT / 2)
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .style("font-size", "11px")
+        .style("fill", COLORS.TEXT);
+
+        // Positive & Negative bars
+        const barY = rowY + (CONFIG.BLOCK_HEIGHT - CONFIG.BAR_HEIGHT) / 2;
+
+        svg.append("rect")
+        .attr("id", `${type}BarPos${index}`)
+        .attr("x", BLOCK_X + 2)
+        .attr("y", barY)
+        .attr("height", CONFIG.BAR_HEIGHT)
+        .attr("width", 0)
+        .attr("fill", isBull ? COLORS.BULL : COLORS.BEAR);
+
+        svg.append("rect")
+        .attr("id", `${type}BarNeg${index}`)
+        .attr("x", BLOCK_X - 20)
+        .attr("y", barY)
+        .attr("height", CONFIG.BAR_HEIGHT)
+        .attr("width", 0)
+        .attr("fill", isBull ? COLORS.BULL : COLORS.BEAR);
+
+        // Value text
+        svg.append("text")
+        .attr("id", `${type}CbbcText${index}`)
+        .attr("x", CONFIG.BAR_AREA_WIDTH + CONFIG.BLOCK_WIDTH + 270)
+        .attr("y", rowY + CONFIG.BLOCK_HEIGHT / 2 + 1)
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .style("font-size", "13px")
+        .style("fill", COLORS.ZERO)
+        .text("------------");
+    }
+
+
+    function updateRows(type, { range_label, net }) {
+        for (let i = 0; i < 15; i++) {
+        d3.select(`#${type}Range${i}`).text(range_label[i] || "—");
+
+        const value = parseFloat(net[i]) || 0;
+        const width = getBarWidth(value);
+
+        const posBar = d3.select(`#${type}BarPos${i}`);
+        const negBar = d3.select(`#${type}BarNeg${i}`);
+        const textEl = d3.select(`#${type}CbbcText${i}`);
+
+        posBar.transition().attr("width", value > 0 ? width : 0);
+        negBar.transition().attr("width", value < 0 ? width : 0)
+            .attr("x", value < 0 ? BLOCK_X - width : CONFIG.BAR_AREA_WIDTH + BLOCK_X - 20);
+
+        textEl.text(formatNumber(value));
+        }
+    }
+
+
+    function updateShotRanges({ bull_max, bull_call, bear_min, bear_call }) {
+        const rowHeight = CONFIG.BLOCK_HEIGHT;
+        const baseY = 15 * rowHeight + CONFIG.HEADER_HEIGHT + CONFIG.MIDDLE_BLOCK_HEIGHT;
+
+        // ── Bull side ───────────────────────────────────────
+        // Gray area: no listed bull 
+        d3.select("#bull_max_rect")
+            .transition()
+            .attr("height", bull_max * rowHeight)
+            .attr("y", baseY);
+
+        d3.select("#bull_max_text") 
+            .transition()
+            .attr("y", baseY + (bull_max * rowHeight) / 2)
+            .text(bull_max > 0 ? "No Listed Bull" : "");
+
+        // Darker gray: shot area
+        const bullShotHeight = Math.max(0, (bull_call - bull_max)) * rowHeight;
+        d3.select("#bull_call_rect")
+            .transition()
+            .attr("height", bullShotHeight)
+            .attr("y", baseY + bull_max * rowHeight);
+
+        d3.select("#bull_call_text")
+            .transition()
+            .attr("y", baseY + bull_max * rowHeight + bullShotHeight / 2)
+            .text(bullShotHeight > 0 ? "Bull Shot Range" : "");
+
+        // ── Bear side ───────────────────────────────────────
+        const bearBaseY = 15 * rowHeight + CONFIG.HEADER_HEIGHT;
+
+        // Gray area: no listed bear area
+        d3.select("#bear_min_rect")
+            .transition()
+            .attr("height", bear_min * rowHeight)
+            .attr("y", bearBaseY - bear_min * rowHeight);
+
+        d3.select("#bear_max_text") 
+            .transition()
+            .attr("y", bearBaseY - bear_min * rowHeight + (bear_min * rowHeight) / 2)
+            .text(bear_min > 0 ? "No Listed Bear" : "");
+
+        // Darker gray: shot area
+        const bearShotHeight = Math.max(0, (bear_call - bear_min)) * rowHeight;
+        d3.select("#bear_call_rect")
+            .transition()
+            .attr("height", bearShotHeight)
+            .attr("y", bearBaseY - bear_call * rowHeight);
+
+        d3.select("#bear_call_text")
+            .transition()
+            .attr("y", bearBaseY - bear_call * rowHeight + bearShotHeight / 2)
+            .text(bearShotHeight > 0 ? "Bear Shot Range" : "");
+    }
+
+
+    // ────────────────────────────────────────────────
+    // Data Fetch & Update
+    // ────────────────────────────────────────────────
+    async function loadData() {
+        const date = document.querySelector('#date_list').value;
+
+        $runBtn.textContent = "Loading...";
+
+        try {
+            const res = await fetch(`api/residual_value/?date=${date}`);
+            if (!res.ok) throw new Error("API error");
+
+            const data = await res.json();
+
+            // Update global max for scaling
+            currentMaxValue = Math.max(parseInt(data.max || 0) + 40_000_000, 73_000_000);
+
+            // Update header info
+            const dateStr = String(date).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+            document.getElementById("updatetime").innerHTML = "Last Updated Time: " + dateStr + " 23:30";
+
+            // Update HSI Close
+            d3.select("#hsiclose").text(`HSI Close:`);
+
+            // Update rows
+            updateRows("Bull", data.bull);
+            updateRows("Bear", data.bear);
+
+            // Update shot ranges (bull_max, bull_call, bear_min, bear_call)
+            updateShotRanges(data);
+
+            $runBtn.textContent = "Run";
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+
+    // ────────────────────────────────────────────────
+    // Event Listeners & Init
+    // ────────────────────────────────────────────────
+    document.getElementById("run").addEventListener("click", loadData);
+
+    // Auto load on page ready with default values
+    loadData();
+
+    // Build chart structure once
+    initChart();
+
+
+</script>
+
+
+{% endblock %}
