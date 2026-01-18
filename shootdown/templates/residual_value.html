@@ -435,7 +435,8 @@
             document.getElementById("updatetime").innerHTML = "Last Updated Time: " + dateStr + " 23:30";
 
             // Update HSI Close
-            d3.select("#hsiclose").text(`HSI Close:`);
+            d3.select("#hsiclose").text(`HSI Close: ${Math.round(data.hsi_close).toLocaleString()}`);
+
 
             // Update rows
             updateRows("Bull", data.bull);
