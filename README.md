@@ -53,8 +53,10 @@ Key UI capabilities:
 - Custom chart highlighting positive and negative residual values
 - Clear visual separation of no-call and call regions
 
-<img src="demo_static.png" width="40%">
-<img src="demo_animated.png" width="40%">
+<p>
+  <img src="demo_static.png" width="40%" />
+  <img src="demo_animated.png" width="40%" />
+</p>
 
 ---
 
