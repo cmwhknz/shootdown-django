@@ -1,4 +1,4 @@
-# Django Web Application for HSI CBBC Residual Value Distribution
+# Django Web Application for HSI CBBC Residual Value
 
 A Django-based web application that provides **end-of-day Hang Seng Index (HSI) CBBC residual value distribution data**, designed to showcase real-world backend engineering practices using Django.
 
@@ -53,8 +53,8 @@ Key UI capabilities:
 - Custom chart highlighting positive and negative residual values
 - Clear visual separation of no-call and call regions
 
-![Static View](demo_static.png)
-![Animated View](demo_animated.png)
+<img src="demo_static.png" width="40%">
+<img src="demo_animated.png" width="40%">
 
 ---
 
